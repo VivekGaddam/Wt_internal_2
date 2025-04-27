@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOM Speed Comparison</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .column {
+            flex: 1;
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        #controls {
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 8px 12px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        .results {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .item {
+            border: 1px solid #ddd;
+            padding: 4px 8px;
+            margin-bottom: 2px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Real DOM vs Virtual DOM Speed Comparison</h1>
+    
+    <div id="controls">
+        <label>Number of items: 
+            <select id="itemCount">
+                <option value="100">100</option>
+            </select>
+        </label>
+        <button id="runTest">Run Speed Test</button>
+    </div>
+    
+    <div class="container">
+        <div class="column">
+            <h2>Real DOM</h2>
+            <div class="results">Last update: <span id="realDOMTime" class="time">-</span></div>
+            <div id="realDOMContainer"></div>
+        </div>
+        
+        <div class="column">
+            <h2>Virtual DOM</h2>
+            <div class="results">Last update: <span id="virtualDOMTime" class="time">-</span></div>
+            <div id="virtualDOMContainer"></div>
+        </div>
+    </div>
+    
+    <script>
+        const runTestButton = document.getElementById('runTest');
+        const realDOMContainer = document.getElementById('realDOMContainer');
+        const virtualDOMContainer = document.getElementById('virtualDOMContainer');
+        const realDOMTimeDisplay = document.getElementById('realDOMTime');
+        const virtualDOMTimeDisplay = document.getElementById('virtualDOMTime');
+        let items = [];
+        let virtualDOM = [];
+        
+        // Generate initial data
+        function generateItems(count) {
+            const newItems = [];
+            for (let i = 1; i <= count; i++) {
+                newItems.push({
+                    id: i,
+                    text: `Item ${i}`
+                });
+            }
+            return newItems;
+        }
+        function updateOneItem(items) {
+            const newItems = [...items];
+            const randomIndex = Math.floor(items.length / 2);
+            newItems[randomIndex] = {
+                ...newItems[randomIndex],
+                text: `Item ${randomIndex + 1} (Updated: ${Date.now()})`
+            };
+            return newItems;
+        }
+        function renderRealDOM(items) {
+            const startTime = performance.now();
+            realDOMContainer.innerHTML = '';
+            items.forEach(item => {
+                const element = document.createElement('div');
+                element.className = 'item';
+                element.textContent = item.text;
+                realDOMContainer.appendChild(element);
+            });
+            
+            const endTime = performance.now();
+            const timeElapsed = (endTime - startTime).toFixed(2);
+            realDOMTimeDisplay.textContent = `${timeElapsed} ms`;
+            
+            return timeElapsed;
+        }
+        
+        function renderVirtualDOM(items) {
+            const startTime = performance.now();
+            const newVirtualDOM = items.map(item => ({
+                type: 'div',
+                props: {
+                    className: 'item',
+                    textContent: item.text
+                }
+            }));
+            
+            if (virtualDOM.length === 0) {
+                virtualDOMContainer.innerHTML = '';
+                newVirtualDOM.forEach(vNode => {
+                    const element = document.createElement(vNode.type);
+                    element.className = vNode.props.className;
+                    element.textContent = vNode.props.textContent;
+                    virtualDOMContainer.appendChild(element);
+                });
+            } 
+            else {
+                newVirtualDOM.forEach((vNode, index) => {
+                    const oldVNode = virtualDOM[index];
+                    const element = virtualDOMContainer.children[index];
+                    if (vNode.props.textContent !== oldVNode.props.textContent) {
+                        element.textContent = vNode.props.textContent;
+                    }
+                });
+            }
+            
+            virtualDOM = newVirtualDOM;
+            
+            const endTime = performance.now();
+            const timeElapsed = (endTime - startTime).toFixed(2);
+            virtualDOMTimeDisplay.textContent = `${timeElapsed} ms`;
+            
+            return timeElapsed;
+        }
+        
+        runTestButton.addEventListener('click', () => {
+            const count = 100;
+            items = generateItems(count);
+            virtualDOM = []; 
+            renderRealDOM(items);
+            renderVirtualDOM(items);
+            setTimeout(() => {
+                items = updateOneItem(items);
+                const realDOMTime = renderRealDOM(items);
+                const virtualDOMTime = renderVirtualDOM(items);
+            }, 100);
+        });
+    </script>
+</body>
+</html>
